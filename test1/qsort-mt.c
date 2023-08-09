@@ -108,7 +108,7 @@ struct common {
     pthread_mutex_t mtx_al; /* For allocating threads in the pool. */
 };
 
-static void *qsort_thread(void *p);
+static void *qsort_worker(void *p);
 
 /* The multithreaded qsort public interface */
 void qsort_mt(void *a,
@@ -141,7 +141,7 @@ void qsort_mt(void *a,
         }
         qs->st = ts_idle;
         qs->common = &c;
-        if (pthread_create(&qs->id, NULL, qsort_thread, qs) != 0) {
+        if (pthread_create(&qs->id, NULL, qsort_worker, qs) != 0) {
             verify(pthread_mutex_destroy(&qs->mtx_st));
             verify(pthread_cond_destroy(&qs->cond_st));
             goto cleanup_threads;
@@ -329,7 +329,7 @@ nevermind:
 }
 
 /* Thread-callable quicksort. */
-static void *qsort_thread(void *p)
+static void *qsort_worker(void *p)
 {
     struct qsort *qs, *qs2;
     int i;
@@ -341,7 +341,7 @@ again:
     /* Wait for work to be allocated. */
     verify(pthread_mutex_lock(&qs->mtx_st));
     while (qs->st == ts_idle)
-        verify(HHHH);
+        verify(pthread_cond_wait(&qs->cond_st, &qs->mtx_st));
     verify(pthread_mutex_unlock(&qs->mtx_st));
     if (qs->st == ts_term) {
         return NULL;
@@ -360,7 +360,7 @@ again:
                 continue;
             verify(pthread_mutex_lock(&qs2->mtx_st));
             qs2->st = ts_term;
-            verify(JJJJ);
+            verify(pthread_cond_signal(&qs2->cond_st));
             verify(pthread_mutex_unlock(&qs2->mtx_st));
         }
         verify(pthread_mutex_unlock(&c->mtx_al));
