@@ -86,13 +86,13 @@ enum thread_state {
 
 /* Variant part passed to qsort invocations. */
 struct qsort {
-    enum thread_state st;   /* For coordinating work. */
-    struct common *common;  /* Common shared elements. */
-    void *a;                /* Array base. */
-    size_t n;               /* Number of elements. */
-    pthread_t id;           /* Thread id. */
-    pthread_mutex_t mtx_st; /* For signalling state change. */
-    pthread_cond_t cond_st; /* For signalling state change. */
+    _Atomic(enum thread_state) st; /* For coordinating work. */
+    struct common *common;         /* Common shared elements. */
+    void *a;                       /* Array base. */
+    size_t n;                      /* Number of elements. */
+    pthread_t id;                  /* Thread id. */
+    pthread_mutex_t mtx_st;        /* For signalling state change. */
+    pthread_cond_t cond_st;        /* For signalling state change. */
 };
 
 /* Invariant common part, shared across invocations. */
