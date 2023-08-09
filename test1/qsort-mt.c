@@ -124,27 +124,27 @@ void qsort_mt(void *a,
     bool bailout = true;
 
     if (n < forkelem)
-        goto f1;
+        goto do_sort;
     errno = 0;
     /* Try to initialize the resources we need. */
     if (pthread_mutex_init(&c.mtx_al, NULL) != 0)
-        goto f1;
+        goto do_sort;
     if ((c.pool = calloc(maxthreads, sizeof(struct qsort))) == NULL)
-        goto f2;
+        goto cleanup_common;
     for (islot = 0; islot < maxthreads; islot++) {
         qs = &c.pool[islot];
         if (pthread_mutex_init(&qs->mtx_st, NULL) != 0)
-            goto f3;
+            goto cleanup_threads;
         if (pthread_cond_init(&qs->cond_st, NULL) != 0) {
             verify(pthread_mutex_destroy(&qs->mtx_st));
-            goto f3;
+            goto cleanup_threads;
         }
         qs->st = ts_idle;
         qs->common = &c;
         if (pthread_create(&qs->id, NULL, qsort_thread, qs) != 0) {
             verify(pthread_mutex_destroy(&qs->mtx_st));
             verify(pthread_cond_destroy(&qs->cond_st));
-            goto f3;
+            goto cleanup_threads;
         }
     }
 
@@ -172,7 +172,7 @@ void qsort_mt(void *a,
     verify(pthread_mutex_unlock(&qs->mtx_st));
 
     /* Wait for all threads to finish, and free acquired resources. */
-f3:
+cleanup_threads:
     for (i = 0; i < islot; i++) {
         qs = &c.pool[i];
         if (bailout) {
@@ -186,11 +186,11 @@ f3:
         verify(pthread_cond_destroy(&qs->cond_st));
     }
     free(c.pool);
-f2:
+cleanup_common:
     verify(pthread_mutex_destroy(&c.mtx_al));
     if (bailout) {
         fprintf(stderr, "Resource initialization failed; bailing out.\n");
-    f1:
+    do_sort:
         qsort(a, n, es, cmp);
     }
 }
